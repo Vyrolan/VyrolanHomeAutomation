@@ -9,35 +9,35 @@
       "id": "ba59f2d0-10e2-4a9a-a6e9-eb4825502f0f",
       "name": "iAqualink",
       "namespace": "iAqualink",
-      "location": "https://raw.githubusercontent.com/Vyrolan/iAqualink-Hubitat/main/iAqualink.groovy",
+      "location": "https://raw.githubusercontent.com/Vyrolan/VyrolanHomeAutomation/main/Hubitat/Drivers/iAqualink/iAqualink.groovy",
       "required": true
     },
     {
       "id": "2d34a5bc-1659-45f7-a43f-8dab975afa05",
       "name": "iAqualink ToggleDevice",
       "namespace": "iAqualink",
-      "location": "https://raw.githubusercontent.com/Vyrolan/iAqualink-Hubitat/main/iAqualink-ToggleDevice.groovy",
+      "location": "https://raw.githubusercontent.com/Vyrolan/VyrolanHomeAutomation/main/Hubitat/Drivers/iAqualink/iAqualink-ToggleDevice.groovy",
       "required": true
     },
     {
       "id": "cf775bd8-f554-49c1-a708-32335c8af0bd",
       "name": "iAqualink Heater",
       "namespace": "iAqualink",
-      "location": "https://raw.githubusercontent.com/Vyrolan/iAqualink-Hubitat/main/iAqualink-Heater.groovy",
+      "location": "https://raw.githubusercontent.com/Vyrolan/VyrolanHomeAutomation/main/Hubitat/Drivers/iAqualink/iAqualink-Heater.groovy",
       "required": true
     },
     {
       "id": "5f5a5f55-6aa2-4617-88af-8e4d25b8d6c6",
       "name": "iAqualink TempSensor",
       "namespace": "iAqualink",
-      "location": "https://raw.githubusercontent.com/Vyrolan/iAqualink-Hubitat/main/iAqualink-TempSensor.groovy",
+      "location": "https://raw.githubusercontent.com/Vyrolan/VyrolanHomeAutomation/main/Hubitat/Drivers/iAqualink/iAqualink-TempSensor.groovy",
       "required": true
     },
     {
       "id": "8da8877c-dbfe-4e1f-b8fb-54bd437465e6",
       "name": "iAqualink ColorLight",
       "namespace": "iAqualink",
-      "location": "https://raw.githubusercontent.com/Vyrolan/iAqualink-Hubitat/main/iAqualink-ColorLight.groovy",
+      "location": "https://raw.githubusercontent.com/Vyrolan/VyrolanHomeAutomation/main/Hubitat/Drivers/iAqualink/iAqualink-ColorLight.groovy",
       "required": true
     }
   ]

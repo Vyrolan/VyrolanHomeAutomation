@@ -227,8 +227,8 @@ class Beacon2MQTT(object):
             await self.check_expired()
 
 
-async def async_main(username, password):
-    b2m = Beacon2MQTT(username, password)
+async def async_main(host, port, username, password):
+    b2m = Beacon2MQTT(host, port, username, password)
     await b2m.run()
 
 
