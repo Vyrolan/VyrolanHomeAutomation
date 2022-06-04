@@ -50,7 +50,7 @@ class Beacon(object):
         # the shorter triggered threshold of 15 seconds.  In reverse, the
         # vehicle has been seen for a long time and then leaves, the first
         # seen check easily passes and we then want the fast threshold.
-        if self.triggered and time.time() - self.first_seen >= 60:
+        if self.triggered and time.time() - self.first_seen >= 300:
             return self.age > 15
         return self.age > 120
 
