@@ -18,10 +18,15 @@ class Beacon(object):
         self.uuid = None
         self.major = None
         self.minor = None
-        self.name = beacon.name
-        self.rssi = beacon.rssi
-        self.address = beacon.address
-        self.set_ibeacon_values()
+        if beacon is not None:
+            self.name = beacon.name
+            self.rssi = beacon.rssi
+            self.address = beacon.address
+            self.set_ibeacon_values()
+        else:
+            self.name = None
+            self.rssi = None
+            self.address = None
 
     def bump(self, beacon, ad_data):
         self.last_seen = time.time()
@@ -50,7 +55,7 @@ class Beacon(object):
         # the shorter triggered threshold of 15 seconds.  In reverse, the
         # vehicle has been seen for a long time and then leaves, the first
         # seen check easily passes and we then want the fast threshold.
-        if self.triggered and time.time() - self.first_seen >= 300:
+        if self.triggered and time.time() - self.first_seen >= 120:
             return self.age > 15
         return self.age > 120
 
@@ -99,6 +104,27 @@ class Beacon(object):
             "updated": self.last_seen
         })
 
+    # noinspection PyBroadException
+    @staticmethod
+    def from_payload(payload, last_seen=None):
+        try:
+            payload = json.loads(payload)
+        except Exception:
+            return None
+
+        if not payload["presence"]:
+            return None
+
+        b = Beacon(None, None)
+        b.address = payload["address"]
+        b.name = payload["name"]
+        b.uuid = payload["uuid"]
+        b.major = payload["major"]
+        b.minor = payload["minor"]
+        b.rssi = payload["rssi"]
+        b.last_seen = last_seen if last_seen is not None else payload["updated"]
+        return b
+
     def __hash__(self):
         return hash(self.address)
 
@@ -107,28 +133,6 @@ class Beacon(object):
 
     def __ne__(self, other):
         return self.address != other.address
-
-
-class BLEScanner(object):
-    def __init__(self):
-        self.scanner = BleakScanner()
-
-    def add_callback(self, func):
-        self.scanner.register_detection_callback(func)
-
-    async def start(self):
-        await self.scanner.start()
-
-    async def stop(self):
-        await self.scanner.stop()
-
-    async def scan(self, duration=5):
-        await self.scanner.start()
-        await asyncio.sleep(duration)
-        await self.scanner.stop()
-
-        beacons = self.scanner.discovered_devices
-        return beacons
 
 
 class MQTTPublisher(object):
@@ -142,12 +146,33 @@ class MQTTPublisher(object):
         self._connected = False
 
     def on_mqtt_disconnect(self, client, userdata, rc):
-        print(f"DISCONNECT: Client={client}, UserData={userdata}, ReasonCode={rc}\n")
+        print(f"DISCONNECT: Client={client}, UserData={userdata}, ReasonCode={rc}")
         self._connected = False
 
     @staticmethod
     def on_mqtt_log(client, userdata, level, buf):
-        print(f"LOG: Client={client}, UserData={userdata}, Level={level}, Buffer={buf}\n")
+        if "PUBLISH" not in buf:
+            return
+        print(f"LOG: Client={client}, UserData={userdata}, Level={level}, Buffer={buf}")
+
+    def retrieve_retained_messages(self):
+        if not self._connected:
+            self.connect()
+
+        messages = []
+
+        def cb(client, userdata, msg):
+            print(f"RECEIVED {msg.payload}")
+            messages.append(msg.payload)
+
+        holder = self.client.on_message
+        self.client.on_message = cb
+        self.client.subscribe("beacons/presence/+")
+        time.sleep(2)
+        self.client.unsubscribe("beacons/presence/+")
+        self.client.on_message = holder
+
+        return messages
 
     def connect(self):
         if self._connected:
@@ -155,7 +180,8 @@ class MQTTPublisher(object):
         self.client.connect(self.host, self.port)
         self._connected = True
         self.client.loop_start()
-        
+        # self.publish(topic="beacons/presence/reset", payload=1, qos=1, retain=False)
+
     def publish(self, topic, payload=None, qos=0, retain=False):
         if not self._connected:
             self.connect()
@@ -164,57 +190,64 @@ class MQTTPublisher(object):
 
 class Beacon2MQTT(object):
     def __init__(self, host, port, username, password):
-        self.scanner = BLEScanner()
-        self.scanner.add_callback(self.detection_callback)
+        self.scanner = BleakScanner()
+        self.scanner.register_detection_callback(self.detection_callback)
         self.mqtt = MQTTPublisher(host, port, username, password)
-        self.beacons = {}
+        self.beacons = self._initialize_beacons()
         self.lock = threading.Lock()
         self.lock_pool = concurrent.futures.ThreadPoolExecutor()
         self.loop = asyncio.get_event_loop()
+
+    def _initialize_beacons(self):
+        messages = self.mqtt.retrieve_retained_messages()
+        beacons = {}
+        for msg in messages:
+            beacon = Beacon.from_payload(msg, last_seen=time.time())
+            if beacon is not None:
+                print(f"Init retained beacon {beacon.name}")
+                beacons[beacon.address] = beacon
+        return beacons
 
     def detection_callback(self, device, advertisement_data):
         if not device.name.startswith('Vyro'):
             return
 
         send_mqtt = True
-        if True:  # with self.lock:
-            if device.address in self.beacons:
-                beacon = self.beacons[device.address]
-                new_uuid, new_rssi = beacon.bump(device, advertisement_data)
-                if new_uuid:
-                    print(f"Redetected beacon {device.name} with new UUID={beacon.uuid}")
-                elif new_rssi:
-                    print(f"Redetected beacon {device.name} with new RSSI={device.rssi}")
-                else:
-                    print(f"Redetected beacon {device.name}")
-                    send_mqtt = False
+        if device.address in self.beacons:
+            beacon = self.beacons[device.address]
+            new_uuid, new_rssi = beacon.bump(device, advertisement_data)
+            triggered = " TRIGGERED" if beacon.triggered else ""
+            if new_uuid:
+                print(f"Redetected beacon {device.name}{triggered} with new UUID={beacon.uuid}")
+            elif new_rssi:
+                print(f"Redetected beacon {device.name}{triggered} with new RSSI={device.rssi}")
             else:
-                print(f"Detected new beacon {device.name} with RSSI={device.rssi}")
-                beacon = Beacon(device, advertisement_data)
-                self.beacons[device.address] = beacon
+                print(f"Redetected beacon {device.name}{triggered}")
+                send_mqtt = False
+        else:
+            beacon = Beacon(device, advertisement_data)
+            triggered = " TRIGGERED" if beacon.triggered else ""
+            print(f"Detected new beacon {device.name}{triggered} with RSSI={device.rssi}")
+            self.beacons[device.address] = beacon
 
         if send_mqtt:
             self.mqtt.publish(topic=f"beacons/presence/{beacon.name[4:]}", payload=beacon.payload(True),
                               qos=1, retain=True)
 
     async def check_expired(self):
-        # await self.loop.run_in_executor(self.lock_pool, self.lock.acquire)
-        if True:  # try:
-            expired = []
-            for address, beacon in self.beacons.items():
-                if beacon.triggered:
-                    print(f"{beacon.name} TRIGGERED and last seen {beacon.age:.3f} seconds ago")
-                else:
-                    print(f"{beacon.name} last seen {beacon.age:.3f} seconds ago")
-                if beacon.expired:
-                    expired.append((address, beacon))
-            for address, beacon in expired:
-                print(f"Expired {beacon.name}")
-                self.mqtt.publish(topic=f"beacons/presence/{beacon.name[4:]}", payload=beacon.payload(False),
-                                  qos=1, retain=True)
-                del self.beacons[address]
-        # finally:
-        #     self.lock.release()
+        expired = []
+        for address, beacon in self.beacons.items():
+            if beacon.triggered:
+                print(f"{beacon.name} TRIGGERED and last seen {beacon.age:.3f} seconds ago")
+            else:
+                print(f"{beacon.name} last seen {beacon.age:.3f} seconds ago")
+            if beacon.expired:
+                expired.append((address, beacon))
+        for address, beacon in expired:
+            print(f"Expired {beacon.name}")
+            self.mqtt.publish(topic=f"beacons/presence/{beacon.name[4:]}", payload=beacon.payload(False),
+                              qos=1, retain=True)
+            del self.beacons[address]
 
     async def run(self):
         while True:
@@ -227,18 +260,14 @@ class Beacon2MQTT(object):
             await self.check_expired()
 
 
-async def async_main(host, port, username, password):
-    b2m = Beacon2MQTT(host, port, username, password)
-    await b2m.run()
-
-
 @click.command()
 @click.option('-h', '--host', default='localhost', help='MQTT Hostname')
 @click.option('-p', '--port', type=int, default=1883, help='MQTT Port')
 @click.option('-u', '--username', required=True, help='MQTT Username')
 @click.option('-w', '--password', required=True, help='MQTT Password')
 def main(host, port, username, password):
-    asyncio.run(async_main(host, port, username, password))
+    b2m = Beacon2MQTT(host, port, username, password)
+    asyncio.run(b2m.run())
 
 
 if __name__ == "__main__":
