@@ -6,6 +6,8 @@ metadata {
             importUrl: "https://raw.githubusercontent.com/Vyrolan/iAqualink-Hubitat/main/iAqualink.groovy"
     ) {
         capability "Initialize"
+        capability "Refresh"
+        capability "Configuration"
 
         attribute "online", "enum", [ "off", "on" ]
         attribute "iaqualink_temp_scale", "string"
@@ -58,8 +60,6 @@ metadata {
         attribute "pool_salinity", "string"
         attribute "orp", "string"
         attribute "ph", "string"
-
-        command "Update", null
     }
 
     preferences {
@@ -170,7 +170,7 @@ metadata {
                     name: "auxEA",
                     type: "bool",
                     title: "Enable AUX EA Port",
-                    description: "Include the special 8th AUX device (which may show simply as 'N/A 8' in the iAqualink app)?",
+                    description: "Include the special 8th AUX device (which may show simply as 'N/A 8' in the iAqualink mobile app)?",
                     defaultValue: false,
                     displayDuringSetup: true
             )
@@ -283,6 +283,17 @@ void initialize() {
 
     ensureChildren()
     autoUpdate()
+}
+
+// [Capability Refresh]
+void refresh() {
+    updateStates()
+}
+
+// [Capability Configuration]
+void configure() {
+    state.clear()
+    installed()
 }
 
 def ensureLogin() {
@@ -470,10 +481,6 @@ void ensureChildren() {
                 ensureChild(key, ot[2].label as String, "0", "set_onetouch_${i}", "onetouch${i}")
         }
     }
-}
-
-void Update() {
-    updateStates()
 }
 
 void autoUpdate() {

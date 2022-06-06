@@ -6,8 +6,8 @@ metadata {
             importUrl: "https://raw.githubusercontent.com/Vyrolan/iAqualink-Hubitat/main/iAqualink-ColorLight.groovy"
     ) {
         capability "Switch"
+        capability "Refresh"
         command "SetColor", [[name: "Color", type: "String"]]
-        command "Update", null
     }
 
     preferences {
@@ -95,8 +95,9 @@ void disableInfoLog() {
     device.updateSetting("infoLogEnable", [value: "false", type: "bool"])
 }
 
-void Update(){
-    parent.Update()
+// [Capability Refresh]
+void refresh() {
+    parent.refresh()
 }
 
 void updateState(String status, String label) {

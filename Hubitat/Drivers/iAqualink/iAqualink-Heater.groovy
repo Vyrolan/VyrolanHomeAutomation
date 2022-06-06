@@ -6,7 +6,7 @@ metadata {
             importUrl: "https://raw.githubusercontent.com/Vyrolan/iAqualink-Hubitat/main/iAqualink-Heater.groovy"
     ) {
         capability "Thermostat"
-        command "Update", null
+        capability "Refresh"
 
         /*
         Thermostat Attributes
@@ -128,8 +128,9 @@ void disableInfoLog() {
     device.updateSetting("infoLogEnable", [value: "false", type: "bool"])
 }
 
-void Update(){
-    parent.Update()
+// [Capability Refresh]
+void refresh() {
+    parent.refresh()
 }
 
 void setType(String heaterType, String tempVar) {

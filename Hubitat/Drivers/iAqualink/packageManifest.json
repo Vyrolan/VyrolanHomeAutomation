@@ -1,8 +1,10 @@
 {
   "packageName": "iAqualink Driver",
   "author": "Vyrolan",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minimumHEVersion": "2.3.0",
+  "documentationLink": "https://github.com/Vyrolan/VyrolanHomeAutomation/blob/main/Hubitat/Drivers/iAqualink/README.md",
+  "communityLink": "https://community.hubitat.com/t/release-iaqualink-pool-spa-driver/94010",
   "dateReleased": "2022-05-19",
   "drivers": [
     {

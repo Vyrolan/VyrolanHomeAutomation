@@ -6,7 +6,7 @@ metadata {
             importUrl: "https://raw.githubusercontent.com/Vyrolan/iAqualink-Hubitat/main/iAqualink-ToggleDevice.groovy"
     ) {
         capability "Switch"
-        command "Update", null
+        capability "Refresh"
     }
 
     preferences {
@@ -87,8 +87,9 @@ void disableInfoLog() {
     device.updateSetting("infoLogEnable", [value: "false", type: "bool"])
 }
 
-void Update(){
-    parent.Update()
+// [Capability Refresh]
+void refresh() {
+    parent.refresh()
 }
 
 void updateState(String status, String label) {
